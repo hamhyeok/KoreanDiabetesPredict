@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KoreanDiabetesPredict · 당뇨병 위험 계산기</title>
+<meta name="description" content="국민건강영양조사 기반 로지스틱 회귀 모델로 현재 당뇨병일 확률을 추정하는 연구용 계산기. 입력값은 저장되거나 전송되지 않습니다.">
+<style>
+:root{
+  --bg:#0B1426; --bg2:#14213D; --card:#1D2E52; --card2:#17274A; --line:#33466F;
+  --text:#F3F5F9; --muted:#A9B8CF; --faint:#7C8DAA;
+  --accent:#E8772E; --accent2:#F59E5B;
+  --low:#6FB7E9; --mid:#F2B84B; --high:#EE6A3C;
+  --radius:18px;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  word-break:keep-all;
+  font-family:"Apple SD Gothic Neo","Pretendard","Noto Sans KR","Malgun Gothic",system-ui,-apple-system,sans-serif;
+  color:var(--text); background:radial-gradient(1200px 700px at 78% -10%, #20356B 0%, transparent 60%), linear-gradient(180deg,var(--bg2),var(--bg));
+  min-height:100vh; line-height:1.55; -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}
+header{display:flex;align-items:center;justify-content:space-between;padding:22px 0}
+.brand{font-weight:800;letter-spacing:.2px;font-size:18px;color:inherit;text-decoration:none;cursor:pointer}
+.brand b{color:var(--accent2)}
+.pill{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:rgba(29,46,82,.55);color:var(--muted);padding:7px 14px;border-radius:999px;font-size:13px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+h1{font-size:clamp(30px,5.2vw,50px);word-break:keep-all;line-height:1.08;margin:18px 0 14px;font-weight:800;letter-spacing:-.5px}
+h1 em{font-style:normal;color:var(--accent2)}
+.lead{color:var(--muted);font-size:clamp(15px,2vw,18px);max-width:560px}
+.hero{display:block;padding:40px 0 44px}
+.btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:700;border-radius:14px;padding:15px 26px;font-size:16px;transition:transform .08s,opacity .15s,background .15s}
+.btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.primary:hover{background:#F0843B}
+.btn.ghost{background:transparent;color:var(--text);border:1.5px solid var(--line)}
+.btn.ghost:hover{border-color:var(--muted)}
+.btn[disabled]{opacity:.38;cursor:not-allowed}
+.row{display:flex;gap:12px;flex-wrap:wrap;margin-top:26px}
+.card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--line);border-radius:var(--radius);padding:24px}
+.preview h3{margin:0 0 4px;font-size:17px}
+.preview .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:rgba(11,20,38,.45);border-radius:10px;padding:8px 12px;font-size:14px}
+.chip.req{border-color:#8E5A33;color:#FFD9BD}
+.chip small{color:var(--faint);margin-left:6px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;border-top:1px solid var(--line);padding:26px 0 30px;margin-top:6px}
+.stat{text-align:center}
+.stat b{display:block;font-size:clamp(24px,3.6vw,36px);color:var(--accent2);font-weight:800}
+.stat span{color:var(--muted);font-size:13px}
+.banner{border:1px solid #6B4A2E;background:rgba(232,119,46,.09);color:#FFD9BD;border-radius:14px;padding:13px 18px;font-size:14px;margin:6px 0 20px}
+/* wizard */
+.stage{max-width:720px;margin:0 auto;padding-bottom:60px}
+.progress{margin-bottom:14px}
+.progress .meta{display:flex;justify-content:space-between;color:var(--muted);font-size:14px;margin-bottom:8px}
+.bar{height:8px;background:#0A1223;border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));border-radius:99px;transition:width .3s}
+.q{padding:30px}
+.qhead{display:flex;gap:16px;align-items:flex-start;margin-bottom:22px}
+.ico{flex:0 0 auto;width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--accent),#B8500A);display:grid;place-items:center;font-size:24px}
+.q h2{margin:0;font-size:clamp(19px,3vw,25px);line-height:1.3}
+.q .why{color:var(--muted);font-size:14px;margin-top:4px}
+.tag{display:inline-block;font-size:12px;border-radius:6px;padding:2px 8px;margin-left:8px;vertical-align:middle;font-weight:700}
+.tag-req{background:rgba(232,119,46,.18);color:var(--accent2)}
+.tag-opt{background:rgba(111,183,233,.15);color:var(--low)}
+.opts{display:grid;gap:12px}
+.opt{appearance:none;font:inherit;color:var(--text);text-align:left;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;background:rgba(11,20,38,.4);border:1.5px solid var(--line);border-radius:14px;padding:16px 18px;font-size:16px;transition:border-color .12s,background .12s}
+.opt:hover{border-color:var(--muted)}
+.opt .r{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:0 0 auto;position:relative}
+.opt.sel{border-color:var(--accent);background:rgba(232,119,46,.12)}
+.opt.sel .r{border-color:var(--accent)}
+.opt.sel .r::after{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--accent)}
+.opt small{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.grid{display:grid;gap:10px}
+.g2{grid-template-columns:1fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}.g4{grid-template-columns:repeat(4,1fr)}
+.opt.sm{padding:12px 10px;justify-content:center;text-align:center;font-size:14px}
+.opt.sm .r{display:none}
+.fld{margin-bottom:16px}
+.fld label{display:block;font-size:14px;color:var(--muted);margin-bottom:6px}
+.inp{display:flex;align-items:center;background:rgba(11,20,38,.55);border:1.5px solid var(--line);border-radius:14px;padding:0 16px}
+.inp:focus-within{border-color:var(--accent)}
+.inp input{flex:1;min-width:0;background:transparent;border:0;outline:0;color:var(--text);font:inherit;font-size:20px;font-weight:700;padding:14px 0}
+.inp input::-webkit-outer-spin-button,.inp input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.inp input[type=number]{-moz-appearance:textfield}
+.inp span{color:var(--muted);font-size:15px}
+.hint{color:var(--faint);font-size:13px;margin-top:6px}
+.err{color:#FFB38A;font-size:13px;margin-top:6px;min-height:18px}
+.sub-h{font-weight:700;margin:20px 0 10px;font-size:15px}
+.nav{display:flex;justify-content:space-between;gap:10px;margin-top:26px;flex-wrap:wrap}
+.nav .right{display:flex;gap:10px;margin-left:auto}
+.bmi{margin-top:4px;color:var(--muted);font-size:14px}
+.bmi b{color:var(--accent2);font-size:18px}
+/* result */
+.res-top{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.big{font-size:clamp(54px,11vw,86px);font-weight:800;line-height:1;letter-spacing:-2px}
+.badge{display:inline-block;border-radius:999px;padding:7px 16px;font-weight:800;font-size:15px;border:1.5px solid}
+.b-low{color:var(--low);border-color:var(--low);background:rgba(111,183,233,.1)}
+.b-mid{color:var(--mid);border-color:var(--mid);background:rgba(242,184,75,.1)}
+.b-high{color:var(--high);border-color:var(--high);background:rgba(238,106,60,.12)}
+.rlabel{font-size:17px;font-weight:800;margin-bottom:4px;color:var(--accent2)}
+.memo{border:1px solid #6B5A2E;border-left:4px solid var(--mid);background:rgba(242,184,75,.07);border-radius:12px;padding:16px 18px;margin-top:20px}
+.memo-h{font-weight:800;margin-bottom:6px}
+.memo-h span{font-weight:400;color:var(--muted);font-size:13px;margin-left:6px}
+.memo ul{margin:0;padding-left:18px}
+.memo li{color:var(--text);font-size:14px;margin:9px 0;line-height:1.6}
+.memo small{color:var(--faint);white-space:nowrap}
+.gauge{position:relative;height:14px;border-radius:99px;background:linear-gradient(90deg,var(--low) 0%,var(--low) 17%,var(--mid) 24%,var(--mid) 46%,var(--high) 54%,#C73E1D 100%);margin:36px 0 60px}
+.gauge .mk{position:absolute;top:-8px;width:4px;height:30px;background:#fff;border-radius:3px;transform:translateX(-2px)}
+.gauge .mk::after{content:attr(data-l);position:absolute;top:-22px;left:50%;transform:translateX(-50%);font-size:12px;white-space:nowrap;color:#fff}
+.gauge .th{position:absolute;top:18px;width:2px;height:16px;background:var(--muted)}
+.gauge .th::after{content:attr(data-l);position:absolute;top:18px;left:50%;transform:translateX(-50%);font-size:12px;white-space:nowrap;color:var(--muted)}
+.fac{display:grid;grid-template-columns:110px 1fr 70px;align-items:center;gap:10px;margin:9px 0;font-size:14px}
+.fac .t{position:relative;height:14px;background:#0A1223;border-radius:7px;overflow:hidden}
+.fac .t::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--line)}
+.fac .t i{position:absolute;top:2px;bottom:2px;border-radius:5px}
+.fac .v{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.fac.skip{opacity:.5}
+.note{color:var(--muted);font-size:13px}
+.warn{border:1px solid #6B4A2E;background:rgba(232,119,46,.09);border-radius:12px;padding:10px 14px;color:#FFD9BD;font-size:13px;margin-top:12px}
+details{border-top:1px solid var(--line);padding:14px 0}
+details summary{cursor:pointer;font-weight:700}
+details p,details li{color:var(--muted);font-size:14px}
+footer{color:var(--faint);font-size:12.5px;padding:30px 0 50px;border-top:1px solid var(--line);margin-top:30px}
+.hidden{display:none!important}
+@media (max-width:820px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .res-top{grid-template-columns:1fr}
+  .g4{grid-template-columns:repeat(2,1fr)}
+  .q{padding:22px 18px}
+  .fac{grid-template-columns:92px 1fr 62px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <a class="brand" id="home" href="#" role="button">Korean<b>Diabetes</b>Predict</a>
+  </header>
+
+  <!-- HERO -->
+  <section id="hero">
+    <div class="hero">
+      <div>
+        <div class="pill">연구 프로젝트</div>
+        <h1>내 건강검진 수치로 보는<br><em>당뇨병 위험</em></h1>
+        <div class="row">
+          <button class="btn primary" id="start">테스트 시작 →</button>
+          <button class="btn ghost" id="about">모델 설명 보기</button>
+        </div>
+        <p class="note" style="margin-top:18px">필수 6단계, 선택 3단계(흡연·음주·운동)로 약 1분 걸립니다.<br>선택 항목을 건너뛰면 학습 자료의 평균값이 적용되며, 그만큼 <b>예측 정확도가 떨어질 수 있습니다.</b></p>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><b>9,473명</b><span>학습·내부 검정 표본</span></div>
+      <div class="stat"><b id="st-int">0.885</b><span>내부 검정 AUROC</span></div>
+      <div class="stat"><b id="st-ext">0.913</b><span>외부 검정 AUROC</span></div>
+      <div class="stat"><b>약 1분</b><span>소요 시간</span></div>
+    </div>
+    <div class="banner">이미 당뇨병 진단을 받으셨다면 이 계산기의 대상이 아닙니다. 만 19세 이상 성인만 이용할 수 있습니다. 입력값은 이 기기의 브라우저 안에서만 계산되며 저장·전송되지 않습니다.</div>
+  </section>
+
+  <!-- WIZARD / RESULT -->
+  <section id="app" class="hidden">
+    <div class="stage">
+      <div class="progress" id="progress"></div>
+      <div class="card q" id="stage"></div>
+    </div>
+  </section>
+
+  <section id="aboutSec">
+    <details id="aboutBox">
+      <summary>모델 설명</summary>
+      <p style="color:var(--text);font-size:15px">이 계산기는 <b>질병관리청 국민건강영양조사 데이터로 학습한 연구 프로젝트 모델</b>입니다. 의료기기가 아니며 진단 도구도 아닙니다.</p>
+      <p><b>왜 만들었나요?</b> 당뇨병이 있어도 <b>본인이 모르고 지내는 사람</b>을 위해 만들었습니다.</p>
+      <ul>
+        <li>2형 당뇨병은 특별한 증상이 없어 합병증이 생길 때까지 진단되지 않는 경우가 흔하고, 환자의 약 1/3은 당뇨병이 있다는 사실을 모르는 것으로 추정됩니다 (대한당뇨병학회 2025 진료지침, p.21).</li>
+        <li>이 연구의 자료에서도 당뇨병으로 판정된 사람 중 내부 검정 약 21%, 외부 검정 약 32%는 의사진단 없이 검사 수치로만 확인된 <b>미진단자</b>였습니다. 국내 30세 이상 당뇨병 인지율은 65.8%로 보고됩니다 (Bae JH et al., Diabetes Metab J 2022;46:417–426).</li>
+        <li>혈액검사 수치(공복혈당·당화혈색소)를 쓰지 않고 키·체중·허리둘레·혈압·가족력·생활습관만으로 계산하므로, 병원에 가기 전에 <b>검사를 받아볼 필요가 있는지</b> 가늠해 볼 수 있습니다.</li>
+        <li>학습에 쓰지 않은 자료에서 미진단 당뇨병의 약 80%를 찾아냈습니다 (내부 80.2% · 외부 78.5%).</li>
+      </ul>
+    </details>
+  </section>
+  <footer>
+    본 계산기는 연구·교육 목적의 참고 도구이며 의학적 진단이나 치료를 대신하지 않습니다. 당뇨병 여부는 공복혈당·당화혈색소 검사와 의료진 상담으로 확인하세요. 데이터 출처: 질병관리청 국민건강영양조사.
+  </footer>
+</div>
+<div id="selftest" class="hidden" style="position:fixed;right:12px;bottom:12px;background:#0A1223;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12px"></div>
+
+<script>
+const MODEL = {"name": "KoreanDiabetesPredict", "features": ["age", "HE_BMI", "HE_wc", "HE_ht", "BD1_11", "BD2_1", "BE3_31", "BE5_1", "HE_hp", "sex_2.0", "BS1_1_2.0", "BS1_1_3.0", "BS1_1_9.0", "BS3_1_2.0", "BS3_1_3.0", "BS3_1_8.0", "BS3_1_9.0", "DI1_2_2.0", "DI1_2_3.0", "DI1_2_4.0", "DI1_2_5.0", "DI1_2_8.0", "HE_DMfh1_1.0", "HE_DMfh1_9.0", "HE_DMfh2_1.0", "HE_DMfh2_9.0", "HE_DMfh3_1.0", "HE_DMfh3_8.0", "HE_DMfh3_9.0"], "mean": [50.34164687252573, 23.705675532570144, 82.33358405911851, 163.8958696225917, 2.878859857482185, 1.7973079968329375, 5.212589073634204, 1.9751913433623647, 2.204539456320929, 0.5802322512536289, 0.3382158880971233, 0.6356558458696225, 0.0002639218791237794, 0.021641594088149908, 0.22340987067827922, 0.6356558458696225, 0.0002639218791237794, 0.0023752969121140144, 0.001715492214304566, 0.0006598046978094484, 0.015043547110055424, 0.7622063869094748, 0.12971760358933757, 0.05027711797307997, 0.12958564264977568, 0.03747690683557667, 0.09263657957244656, 0.02480865663763526, 0.027315914489311165], "scale": [17.415506828705567, 3.742003955242336, 11.007888572669728, 9.043509683468237, 1.5785408299785266, 1.6711209315917692, 2.5111133037094158, 1.6861621446689397, 1.3197528821436382, 0.4935208059026231, 0.4731024214013256, 0.4812457703516959, 0.016243528691928338, 0.14551025906606604, 0.4165307916130497, 0.4812457703516959, 0.016243528691928338, 0.04867910102593634, 0.041382959062483994, 0.025678188323364968, 0.12172608101965235, 0.42573208789552, 0.33599248043427554, 0.21851619935693778, 0.33584699472947543, 0.18992732370465862, 0.28992247877245453, 0.15554159313016946, 0.16300231686980343], "coef": [1.2422662372544486, -0.15990230389854918, 1.1665415263906427, -0.180591552985789, -0.20298013446222518, 0.061973561198224676, -0.010374572108842276, -0.08228623068827788, 0.1408466921434141, -0.12228848523754261, -0.02955565010303752, -0.22225851086283566, 0.04714638313709121, -0.19622857382065503, -0.20131177674390788, -0.22225851086283566, 0.04714638313709121, -0.03572729948022709, 0.03702539875943881, -0.06321263451073494, 0.015501489770342559, -0.41162861376176896, 0.36051783502446466, -0.02172567602611795, 0.3860663795329006, 0.16187159000272433, 0.358801836199739, 0.007277447912629057, -0.07776669912526245], "intercept": -1.1131903272145278, "calibration": {"a": 0.8532046862691642, "b": -1.212616795441997}, "threshold_raw": 0.41500036862937983, "categorical": {"sex": {"1.0": 3942, "2.0": 5531}, "BS1_1": {"1.0": 240, "2.0": 3191, "3.0": 6040, "9.0": 2}, "BS3_1": {"1.0": 1122, "2.0": 204, "3.0": 2105, "8.0": 6040, "9.0": 2}, "DI1_2": {"1.0": 2048, "2.0": 27, "3.0": 14, "4.0": 8, "5.0": 147, "8.0": 7229}, "HE_DMfh1": {"0.0": 7770, "1.0": 1242, "9.0": 461}, "HE_DMfh2": {"0.0": 7896, "1.0": 1233, "9.0": 344}, "HE_DMfh3": {"0.0": 8125, "1.0": 871, "8.0": 232, "9.0": 245}}, "numeric": {"age": {"min": 19.0, "max": 80.0, "mean": 50.34164687252573}, "HE_BMI": {"min": 13.173742848539597, "max": 48.05490419911598, "mean": 23.705675532570144}, "HE_wc": {"min": 51.8, "max": 138.5, "mean": 82.33358405911851}, "HE_ht": {"min": 130.7, "max": 191.0, "mean": 163.8958696225917}, "BD1_11": {"min": 1.0, "max": 6.0, "mean": 2.878859857482185, "values": {"1.0": 2105, "2.0": 1531, "3.0": 860, "4.0": 1710, "5.0": 1003, "6.0": 369}}, "BD2_1": {"min": 0.0, "max": 5.0, "mean": 1.7973079968329375, "values": {"0.0": 2105, "1.0": 2046, "2.0": 1106, "3.0": 667, "4.0": 909, "5.0": 745}}, "BE3_31": {"min": 1.0, "max": 8.0, "mean": 5.212589073634204, "values": {"1.0": 1002, "2.0": 406, "3.0": 691, "4.0": 970, "5.0": 636, "6.0": 1000, "7.0": 430, "8.0": 2443}}, "BE5_1": {"min": 1.0, "max": 6.0, "mean": 1.9751913433623647, "values": {"1.0": 5309, "2.0": 307, "3.0": 488, "4.0": 505, "5.0": 253, "6.0": 716}}, "HE_hp": {"min": 1.0, "max": 4.0, "mean": 2.204539456320929, "values": {"1.0": 3807, "2.0": 590, "3.0": 1005, "4.0": 2176}}}};
+const TESTS = [{"answers": {"sex": 1, "age": 45, "height": 170, "weight": 68, "wc": 82, "fh1": 0, "fh2": 0, "fh3": 0, "sbp": 120, "dbp": 78, "htn": 8}, "expected_p": 0.04461942300806677, "expected_raw": 0.10249109695195201}, {"answers": {"sex": 2, "age": 58, "height": 158, "weight": 66, "wc": 92, "fh1": 1, "fh2": 0, "fh3": 9, "sbp": 142, "dbp": 88, "htn": 1, "smoke": "daily", "drinkFreq": 4, "drinkAmt": 2, "walk": 3, "strength": 2}, "expected_p": 0.6237407331807152, "expected_raw": 0.8822249416275266}, {"answers": {"sex": 1, "age": 70, "height": 165, "weight": 80, "wc": 102, "fh1": 1, "fh2": 1, "fh3": 1, "sbp": 135, "dbp": 85, "htn": 5, "smoke": "former", "drinkFreq": 1, "walk": 8, "strength": 1}, "expected_p": 0.9886094005722769, "expected_raw": 0.9987111498100426}, {"answers": {"sex": 2, "age": 85, "height": 150, "weight": 90, "wc": 120, "fh1": 0, "fh2": 1, "fh3": 8, "sbp": 150, "dbp": 95, "htn": 1}, "expected_p": 0.9830200764429231, "expected_raw": 0.9979300032197456}];
+const PERF = {"auroc_internal": 0.885, "auroc_external": 0.913};
+
+/* ---------- 모델 계산 ---------- */
+const F = MODEL.features, IDX = Object.fromEntries(F.map((f,i)=>[f,i]));
+const CAL = MODEL.calibration;
+const sigmoid = z => 1/(1+Math.exp(-z));
+const logit = p => Math.log(p/(1-p));
+const CUT_LOW = 0.20, CUT_HIGH = 0.50;                        // 안내용 구간 경계 (확률 자체로 해석)
+const N = k => MODEL.numeric[k];
+const clamp = (v,lo,hi)=>Math.min(Math.max(v,lo),hi);
+
+function hpClass(sbp,dbp,medicated){
+  if (medicated || sbp>=140 || dbp>=90) return 4;
+  if ((sbp>=130&&sbp<140) || (dbp>=80&&dbp<90)) return 3;
+  if (sbp>=120&&sbp<130&&dbp<80) return 2;
+  return 1;
+}
+const SMOKE = {never:[3,8], former:[2,3], occ:[2,2], daily:[2,1]};      // [BS1_1, BS3_1]
+
+function toVector(a){
+  const x = MODEL.mean.slice();                       // 기본값 = 평균 (표준화 값 0)
+  const set = (n,v)=>{ x[IDX[n]] = v; };
+  const dummies = (prefix, levels, val)=>levels.forEach(l=>set(`${prefix}_${l}.0`, l===val?1:0));
+  const warn = [];
+  const bmi = a.weight/Math.pow(a.height/100,2);
+  const put = (key,name,v)=>{ const lo=N(name).min, hi=N(name).max; if(v<lo||v>hi) warn.push(key); set(name, clamp(v,lo,hi)); };
+  put('나이','age',a.age); put('BMI','HE_BMI',bmi); put('허리둘레','HE_wc',a.wc); put('키','HE_ht',a.height);
+  set('HE_hp', hpClass(a.sbp,a.dbp,a.htn===1));
+  set('sex_2.0', a.sex===2?1:0);
+  dummies('HE_DMfh1',[1,9],a.fh1); dummies('HE_DMfh2',[1,9],a.fh2); dummies('HE_DMfh3',[1,8,9],a.fh3);
+  dummies('DI1_2',[2,3,4,5,8],a.htn);
+  if (a.smoke){ const [s1,s3]=SMOKE[a.smoke]; dummies('BS1_1',[2,3,9],s1); dummies('BS3_1',[2,3,8,9],s3); }
+  if (a.drinkFreq){ set('BD1_11',a.drinkFreq); set('BD2_1', a.drinkFreq===1?0:a.drinkAmt); }
+  if (a.walk) set('BE3_31',a.walk);
+  if (a.strength) set('BE5_1',a.strength);
+  return {x, warn, bmi};
+}
+function predict(a){
+  const {x,warn,bmi} = toVector(a);
+  let lg = MODEL.intercept; const contrib = new Array(F.length);
+  for (let i=0;i<F.length;i++){ const z=(x[i]-MODEL.mean[i])/MODEL.scale[i]; contrib[i]=MODEL.coef[i]*z; lg+=contrib[i]; }
+  const calLogit = CAL.a*lg + CAL.b;
+  return {raw:sigmoid(lg), p:sigmoid(calLogit), rawLogit:lg, calLogit, contrib, warn, bmi};
+}
+const GROUPS = [
+  ['나이', n=>n==='age', ()=>true],
+  ['체형', n=>['HE_BMI','HE_wc','HE_ht'].includes(n), ()=>true],
+  ['성별', n=>n==='sex_2.0', ()=>true],
+  ['가족력', n=>n.startsWith('HE_DMfh'), ()=>true],
+  ['혈압', n=>n==='HE_hp'||n.startsWith('DI1_2'), ()=>true],
+  ['흡연', n=>n.startsWith('BS1_1')||n.startsWith('BS3_1'), a=>!!a.smoke],
+  ['음주', n=>n==='BD1_11'||n==='BD2_1', a=>!!a.drinkFreq],
+  ['걷기', n=>n==='BE3_31', a=>!!a.walk],
+  ['근력운동', n=>n==='BE5_1', a=>!!a.strength],
+];
+function factors(a,res){
+  return GROUPS.map(([name,test,answered])=>{
+    let s=0; F.forEach((f,i)=>{ if(test(f)) s+=res.contrib[i]; });
+    // 이 항목만 학습 집단 평균 수준(표준화 값 0)이었다면의 확률과 비교한 %p 차이
+    const without = sigmoid(res.calLogit - CAL.a*s);
+    return {name, dpp:(res.p-without)*100, answered:answered(a)};
+  });
+}
+/* 진료지침 위험인자(표 1-2.1) 중 이 계산기 입력으로 확인할 수 있는 항목 */
+function riskFactors(a,res){
+  const r=[];
+  if (res.bmi>=23) r.push('체질량지수 23 이상 (BMI '+res.bmi.toFixed(1)+')');
+  if (a.wc>=(a.sex===1?90:85)) r.push('복부비만 (허리둘레 '+(a.sex===1?'남성 90':'여성 85')+'cm 이상)');
+  if (a.fh1===1||a.fh2===1||a.fh3===1) r.push('부모·형제자매 중 당뇨병');
+  if (a.sbp>=140||a.dbp>=90||a.htn===1) r.push('고혈압 (140/90mmHg 이상 또는 약 복용)');
+  return r;
+}
+
+/* ---------- UI ---------- */
+const $ = s=>document.querySelector(s);
+const A = {};                       // 답변
+let step = 0, showResult = false;
+
+const FH = [[0,'없음'],[1,'있음'],[9,'모름']];
+const FH3 = [[0,'없음'],[1,'있음'],[9,'모름'],[8,'형제자매 없음']];
+const DRINK_F = [[1,'마시지 않음'],[2,'월 1회 미만'],[3,'월 1회 정도'],[4,'월 2~4회'],[5,'주 2~3회'],[6,'주 4회 이상']];
+const DRINK_A = [[1,'1~2잔'],[2,'3~4잔'],[3,'5~6잔'],[4,'7~9잔'],[5,'10잔 이상']];
+const WALK = [[1,'안 함'],[2,'주 1일'],[3,'주 2일'],[4,'주 3일'],[5,'주 4일'],[6,'주 5일'],[7,'주 6일'],[8,'주 7일']];
+const STR = [[1,'안 함'],[2,'주 1일'],[3,'주 2일'],[4,'주 3일'],[5,'주 4일'],[6,'주 5일 이상']];
+
+const num = v => (v===undefined||v===''||isNaN(+v)) ? null : +v;
+function optBtns(key, list, cls='', type='opt'){
+  return list.map(([v,l])=>`<button type="button" class="opt ${cls} ${A[key]===v?'sel':''}" data-k="${key}" data-v="${v}"><span>${l}</span><i class="r"></i></button>`).join('');
+}
+function field(key,label,unit,step_,ph,hint){
+  return `<div class="fld"><label>${label}</label><div class="inp"><input type="number" inputmode="decimal" step="${step_}" placeholder="${ph}" data-n="${key}" value="${A[key]??''}"><span>${unit}</span></div>${hint?`<div class="hint">${hint}</div>`:''}<div class="err" data-e="${key}"></div></div>`;
+}
+const STEPS = [
+ {id:'sex', req:true, icon:'👤', t:'생물학적 성별은 무엇입니까?', why:'모델이 성별에 따라 다른 기준을 사용합니다.',
+  html:()=>`<div class="opts">${optBtns('sex',[[1,'남성'],[2,'여성']])}</div>`,
+  valid:()=>A.sex?null:'선택해 주세요.'},
+ {id:'age', req:true, icon:'🎂', t:'만 나이는 어떻게 되시나요?', why:'나이는 모델에서 가장 영향이 큰 변수입니다. 학습 자료는 만 19~80세(80세 이상 포함)입니다.',
+  html:()=>field('age','만 나이','세',1,'예: 45'),
+  valid:()=>{const v=num(A.age); if(v===null) return '나이를 입력해 주세요.'; if(v<19) return '만 19세 이상 성인만 이용할 수 있습니다.'; if(v>110) return '나이를 확인해 주세요.'; return null;}},
+ {id:'body', req:true, icon:'⚖️', t:'키와 체중을 알려주세요', why:'체질량지수(BMI)는 키와 체중으로 자동 계산됩니다.',
+  html:()=>field('height','키','cm',0.1,'예: 170')+field('weight','체중','kg',0.1,'예: 68')+`<div class="bmi" id="bmi"></div>`,
+  valid:()=>{const h=num(A.height),w=num(A.weight); if(h===null||w===null) return '키와 체중을 모두 입력해 주세요.'; if(h<100||h>230) return '키를 확인해 주세요 (100~230cm).'; if(w<20||w>300) return '체중을 확인해 주세요 (20~300kg).'; return null;}},
+ {id:'wc', req:true, icon:'📏', t:'허리둘레는 어떻게 되시나요?', why:'복부 비만을 보여주는 값으로, 체형 변수 중 영향이 큽니다.',
+  html:()=>field('wc','허리둘레','cm',0.1,'예: 82','마지막 갈비뼈 아래와 골반뼈 위의 중간 지점을, 숨을 내쉰 상태에서 잽니다.'),
+  valid:()=>{const v=num(A.wc); if(v===null) return '허리둘레를 입력해 주세요.'; if(v<40||v>200) return '허리둘레를 확인해 주세요 (40~200cm).'; return null;}},
+ {id:'fh', req:true, icon:'👪', t:'가족 중 당뇨병 진단을 받은 분이 있나요?', why:'가족력은 모델에서 나이, 허리둘레 다음으로 영향이 큽니다.',
+  html:()=>`<div class="sub-h">아버지</div><div class="grid g3">${optBtns('fh1',FH,'sm')}</div><div class="sub-h">어머니</div><div class="grid g3">${optBtns('fh2',FH,'sm')}</div><div class="sub-h">형제자매</div><div class="grid g4">${optBtns('fh3',FH3,'sm')}</div>`,
+  valid:()=>(A.fh1!==undefined&&A.fh2!==undefined&&A.fh3!==undefined)?null:'세 항목을 모두 선택해 주세요.'},
+ {id:'bp', req:true, icon:'❤️', t:'혈압을 알려주세요', why:'최근 측정한 혈압과 고혈압 진단·약 복용 여부로 혈압 단계를 계산합니다.',
+  html:()=>field('sbp','수축기 혈압(높은 쪽)','mmHg',1,'예: 120')+field('dbp','이완기 혈압(낮은 쪽)','mmHg',1,'예: 80')+
+        `<div class="sub-h">고혈압 진단 · 약 복용</div><div class="opts">${optBtns('htn',[[8,'고혈압 진단을 받은 적 없음'],[1,'진단받았고 혈압약을 복용 중'],[5,'진단받았지만 혈압약은 먹지 않음']])}</div>`,
+  valid:()=>{const s=num(A.sbp),d=num(A.dbp); if(s===null||d===null) return '혈압을 모두 입력해 주세요.'; if(s<60||s>260||d<30||d>160) return '혈압 값을 확인해 주세요.'; if(s<=d) return '수축기 혈압이 이완기보다 높아야 합니다.'; if(!A.htn) return '고혈압 진단·약 복용 여부를 선택해 주세요.'; return null;}},
+ {id:'smoke', req:false, icon:'🚬', t:'흡연 상태는 어떠신가요?', why:'건너뛰면 학습 자료의 평균이 적용되며, 예측 정확도가 떨어질 수 있습니다.',
+  html:()=>`<div class="opts">${optBtns('smoke',[['never','피운 적 없음'],['former','과거에 피웠으나 현재는 피우지 않음'],['occ','가끔 피움'],['daily','매일 피움']])}</div>`,
+  valid:()=>null},
+ {id:'drink', req:false, icon:'🍺', t:'음주 습관은 어떠신가요?', why:'최근 1년 기준입니다. 건너뛰면 평균이 적용되며, 예측 정확도가 떨어질 수 있습니다.',
+  html:()=>`<div class="sub-h" style="margin-top:0">음주 빈도</div><div class="grid g2">${optBtns('drinkFreq',DRINK_F,'sm')}</div>`+
+        (A.drinkFreq>1?`<div class="sub-h">술을 마시는 날, 한 번에 마시는 양 (술 종류 무관, 잔 수)</div><div class="grid g3">${optBtns('drinkAmt',DRINK_A,'sm')}</div>`:''),
+  valid:()=>(A.drinkFreq>1&&!A.drinkAmt)?'한 번에 마시는 양을 선택해 주세요.':null},
+ {id:'move', req:false, icon:'🚶', t:'신체활동은 어떠신가요?', why:'최근 1주일 기준입니다. 각각 건너뛸 수 있으며, 건너뛰면 평균이 적용되어 예측 정확도가 떨어질 수 있습니다.',
+  html:()=>`<div class="sub-h" style="margin-top:0">걷기 (한 번에 10분 이상, 일주일에 며칠)</div><div class="grid g4">${optBtns('walk',WALK,'sm')}</div>`+
+        `<div class="sub-h">근력운동 (팔굽혀펴기, 아령, 역기 등, 일주일에 며칠)</div><div class="grid g3">${optBtns('strength',STR,'sm')}</div>`,
+  valid:()=>null},
+];
+
+function renderProgress(){
+  const total = STEPS.length, n = step+1;
+  $('#progress').innerHTML = showResult ? '' :
+   `<div class="meta"><span>질문 ${n} / ${total}</span><span>${Math.round(step/total*100)}% 완료</span></div><div class="bar"><i style="width:${step/total*100}%"></i></div>`;
+}
+function renderStep(){
+  const s = STEPS[step];
+  renderProgress();
+  $('#stage').innerHTML = `
+    <div class="qhead"><div class="ico">${s.icon}</div><div><h2>${s.t}<span class="tag ${s.req?'tag-req':'tag-opt'}">${s.req?'필수':'선택'}</span></h2><div class="why">${s.why}</div></div></div>
+    <div id="body">${s.html()}</div>
+    <div class="nav">
+      ${step===0?'':'<button class="btn ghost" id="prev">← 이전</button>'}
+      <div class="right">${s.req?'':'<button class="btn ghost" id="skip">건너뛰기</button>'}<button class="btn primary" id="next">${step===STEPS.length-1?'결과 보기':'다음'}</button></div>
+    </div>`;
+  refreshNext(); updateBmi();
+}
+function refreshNext(){
+  const s = STEPS[step], msg = s.valid();
+  $('#next').disabled = !!msg;
+}
+function updateBmi(){
+  const el = $('#bmi'); if(!el) return;
+  const h=num(A.height), w=num(A.weight);
+  el.innerHTML = (h&&w&&h>=100&&w>=20) ? `BMI <b>${(w/Math.pow(h/100,2)).toFixed(1)}</b> kg/m²` : '';
+}
+function go(delta){
+  if (delta>0 && step===STEPS.length-1){ showResult=true; renderResult(); return; }
+  step = Math.max(0, step+delta);
+  renderStep(); window.scrollTo({top:$('#app').offsetTop-10,behavior:'smooth'});
+}
+function startApp(){
+  Object.keys(A).forEach(k=>delete A[k]);
+  $('#hero').classList.add('hidden'); $('#aboutSec').classList.add('hidden');
+  $('#app').classList.remove('hidden'); step=0; showResult=false; renderStep(); window.scrollTo(0,0);
+}
+function backToHero(){
+  $('#app').classList.add('hidden'); $('#hero').classList.remove('hidden'); $('#aboutSec').classList.remove('hidden'); window.scrollTo(0,0);
+}
+
+document.addEventListener('click', e=>{
+  const o = e.target.closest('.opt[data-k]');
+  if (o){
+    const k=o.dataset.k; let v=o.dataset.v; v = isNaN(+v)?v:+v;
+    A[k] = (A[k]===v && STEPS[step] && !STEPS[step].req) ? undefined : v;      // 선택 항목은 다시 누르면 해제
+    if (k==='drinkFreq' && A.drinkFreq===1) A.drinkAmt = undefined;
+    const keepScroll = window.scrollY;
+    renderStep(); window.scrollTo(0,keepScroll);
+    return;
+  }
+  if (e.target.id==='next') return go(1);
+  if (e.target.id==='prev') return step===0?backToHero():go(-1);
+  if (e.target.id==='skip'){ const s=STEPS[step];
+    if(s.id==='smoke') A.smoke=undefined;
+    if(s.id==='drink'){A.drinkFreq=undefined;A.drinkAmt=undefined;}
+    if(s.id==='move'){A.walk=undefined;A.strength=undefined;}
+    return go(1); }
+  if (e.target.closest('#home')){ e.preventDefault(); Object.keys(A).forEach(k=>delete A[k]); showResult=false; step=0; return backToHero(); }
+  if (e.target.id==='start') return startApp();
+  if (e.target.id==='about'){ $('#aboutBox').open=true; $('#aboutSec').scrollIntoView({behavior:'smooth'}); return; }
+  if (e.target.id==='restart'){ Object.keys(A).forEach(k=>delete A[k]); return startApp(); }
+  if (e.target.id==='edit'){ showResult=false; step=0; renderStep(); window.scrollTo(0,0); }
+});
+document.addEventListener('input', e=>{
+  const n = e.target.dataset && e.target.dataset.n;
+  if (!n) return;
+  A[n] = e.target.value===''?undefined:+e.target.value;
+  updateBmi(); refreshNext();
+});
+document.addEventListener('keydown', e=>{
+  if (e.key==='Enter' && e.target.matches && e.target.matches('input[data-n]')){ const b=$('#next'); if(b&&!b.disabled) b.click(); }
+});
+
+/* ---------- 결과 ---------- */
+const pct = p => p<0.01?'1% 미만':p>0.99?'99% 이상':Math.round(p*100)+'%';
+const BANDS = {
+  low :['low','낮은 편','입력하신 정보로 보면 현재 당뇨병일 가능성이 낮은 편입니다.'],
+  mid :['mid','중간','현재 당뇨병이 있을 가능성이 어느 정도 있습니다. 검진으로 확인해 보시길 권합니다.'],
+  high:['high','높은 편','현재 당뇨병이 있을 가능성이 높은 편입니다. 공복혈당·당화혈색소 검사를 받아 보시길 권합니다.']
+};
+const fmtPP = d => Math.abs(d)<0.5 ? '±0%p' : (d>0?'+':'−')+Math.abs(d).toFixed(Math.abs(d)<10?1:0)+'%p';
+function renderResult(){
+  const res = predict(A), p = res.p;
+  const band = BANDS[p>=CUT_HIGH?'high':p>=CUT_LOW?'mid':'low'];
+  const fac = factors(A,res);
+  const maxD = Math.max(3, ...fac.filter(f=>f.answered).map(f=>Math.abs(f.dpp)));
+  const facHtml = fac.slice().sort((a,b)=>Math.abs(b.dpp)-Math.abs(a.dpp)).map(f=>{
+    if(!f.answered) return `<div class="fac skip"><span>${f.name}</span><div class="t"></div><span class="v">평균 적용</span></div>`;
+    const w = Math.min(50, Math.abs(f.dpp)/maxD*50), up = f.dpp>=0;
+    return `<div class="fac"><span>${f.name}</span><div class="t"><i style="${up?'left:50%':'right:50%'};width:${w}%;background:${up?'var(--high)':'var(--low)'}"></i></div><span class="v">${fmtPP(f.dpp)}</span></div>`;
+  }).join('');
+  const skipped = fac.filter(f=>!f.answered).map(f=>f.name);
+  const smokeF = fac.find(f=>f.name==='흡연');
+  const smokeNote = (A.smoke && A.smoke!=='never' && smokeF.dpp<0) ? `<p class="note" style="margin:4px 0 0">※ 흡연을 하셨는데도 흡연 항목이 확률을 낮추는 쪽으로 나왔습니다. 이 자료 안에서의 연관성이며(해당 응답자가 적으면 값이 불안정할 수 있습니다), 흡연이 당뇨병 위험을 낮춘다는 뜻은 아닙니다.</p>` : '';
+  const drinkF = fac.find(f=>f.name==='음주');
+  const drinkNote = (A.drinkFreq>1 && drinkF.dpp<0) ? `<p class="note" style="margin:4px 0 0">※ 음주를 하셨는데도 음주 항목이 확률을 낮추는 쪽으로 나왔습니다. 이 자료 안에서의 연관성이며, 음주가 당뇨병 위험을 낮춘다는 뜻은 아닙니다.</p>` : '';
+  const gp = clamp(p*100,0.5,99.5);
+  const rf = riskFactors(A,res);
+  const screen = (A.age>=35 ? '만 35세 이상 모든 성인은 선별검사 대상입니다.' : '위험인자가 있는 만 19세 이상 성인은 선별검사 대상입니다.')
+    + (rf.length ? ' 입력하신 값 중 해당하는 위험인자: '+rf.join(', ')+'.' : ' 입력하신 값에서는 해당하는 위험인자가 없었습니다(공복혈당장애·임신당뇨병 이력 등 이 계산기에 없는 위험인자도 있습니다).')
+    + ((A.age>=35||rf.length) ? ' 계산된 확률이 낮아도 이 기준에 해당하면 검사를 받아 보세요.' : '');
+  renderProgress();
+  $('#stage').innerHTML = `
+   <div class="res-top">
+     <div>
+       <div class="rlabel">내가 현재 당뇨병일 확률</div>
+       <div class="big">${p<0.01?'<1':p>0.99?'>99':Math.round(p*100)}<span style="font-size:.45em">%</span></div>
+       <div style="margin-top:12px"><span class="badge b-${band[0]}">${band[1]}</span></div>
+     </div>
+     <div>
+       <p style="margin:0 0 8px;font-size:15px">나와 비슷한 특성을 가진 사람 100명 중 <b>약 ${p<0.01?'1명 미만':p>0.99?'99명 이상':Math.round(p*100)+'명'}</b>이 당뇨병이었습니다.</p>
+       <p style="margin:0 0 8px;font-size:15px"><b>${band[2]}</b></p>
+       <p class="note" style="margin:0">앞으로 걸릴 확률이 아니라, <b>지금 이미 당뇨병이 있을 가능성</b>의 추정값입니다. 낮은 편 20% 미만, 중간 20~50%, 높은 편 50% 이상으로 나눈 안내용 구간입니다.</p>
+     </div>
+   </div>
+   <div class="gauge"><span class="th" style="left:20%" data-l="20%"></span><span class="th" style="left:50%" data-l="50%"></span><span class="mk" style="left:${gp}%" data-l="나 ${pct(p)}"></span></div>
+   ${res.warn.length?`<div class="warn">학습 자료의 범위를 벗어난 값(${res.warn.join(', ')})은 범위 안의 가장 가까운 값으로 계산했습니다.</div>`:''}
+   ${skipped.length?`<div class="warn">건너뛴 항목(${skipped.join(', ')})은 학습 자료의 평균값으로 계산했습니다. 그만큼 예측 정확도가 떨어질 수 있습니다.</div>`:''}
+   <div class="sub-h">내 확률에 영향을 준 요인 <span class="note">(평균적인 사람 대비, 항목별로 올리거나 내린 정도)</span></div>
+   ${facHtml}
+   ${drinkNote}
+   ${smokeNote}
+   <p class="note">예) 체형 +10%p는 체형 때문에 내 확률이 약 10%p 올라갔다는 뜻이고, −3%p는 약 3%p 내려갔다는 뜻입니다. 주황은 확률을 높이고 파랑은 낮춥니다. 항목을 하나씩 따로 바꿔 계산한 값이라 합이 전체와 같지 않을 수 있습니다. 인과관계가 아니라 이 모델 안에서의 연관성입니다.</p>
+   <div class="memo">
+     <div class="memo-h">📝 참고 메모 <span>대한당뇨병학회 당뇨병 진료지침 2025 (제9판)</span></div>
+     <ul>
+       <li><b>확진은 검사로 합니다.</b> 당화혈색소 6.5% 이상, 공복혈장포도당 126mg/dL 이상, 75g 경구포도당부하 2시간 후 200mg/dL 이상 중 하나에 해당하면 당뇨병으로 진단하며, 서로 다른 날 검사를 반복해 확인합니다(같은 날 두 가지 이상 충족하면 바로 확진). 이 계산기의 확률은 검사를 대신하지 않습니다.</li>
+       <li><b>검사를 받아 볼 대상.</b> ${screen}</li>
+       <li><b>정상이어도 매년, 의심되면 추가 검사.</b> 선별검사 결과가 정상인 성인은 매년 재검사하고, 전단계(공복혈당 100–125mg/dL, 당화혈색소 5.7–6.4%) 등 당뇨병이 의심되면 다른 방법으로 추가 검사를 권고합니다.</li>
+       <li><b>생활습관.</b> 당뇨병전단계 성인에게 주 150분 이상 중강도 신체활동을, 과체중·비만이면 체중 5% 이상 감량·유지를 권고합니다. 생활습관 중재로 당뇨병 발생 위험이 대조군 대비 28.5~68% 감소했습니다.</li>
+     </ul>
+   </div>
+   <div class="warn">진단이 아닙니다. 이 모델은 건강검진 항목만으로 계산한 참고값이며, 정확한 확인은 공복혈당·당화혈색소 검사와 의료진 상담이 필요합니다.</div>
+   <div class="nav"><button class="btn ghost" id="edit">답변 수정</button><div class="right"><button class="btn primary" id="restart">처음부터 다시</button></div></div>`;
+  window.scrollTo({top:$('#app').offsetTop-10,behavior:'smooth'});
+}
+
+/* ---------- 초기화 / 자체 검산 ---------- */
+$('#st-int').textContent = PERF.auroc_internal.toFixed(3);
+$('#st-ext').textContent = PERF.auroc_external.toFixed(3);
+if (location.hash==='#selftest'){
+  let bad = 0; const lines = TESTS.map((t,i)=>{ const r=predict(t.answers); const d=Math.abs(r.p-t.expected_p); if(d>1e-9) bad++; return `#${i+1} p=${r.p.toFixed(6)} (기대 ${t.expected_p.toFixed(6)})`; });
+  const el=$('#selftest'); el.classList.remove('hidden'); el.textContent = (bad?'검산 실패 ':'검산 통과 ')+lines.join(' · ');
+  console.log('selftest', bad?'FAIL':'PASS', lines);
+}
+window.__predict = predict;
+</script>
+</body>
+</html>
